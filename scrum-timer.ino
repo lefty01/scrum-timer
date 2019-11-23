@@ -11,12 +11,25 @@
 #include <LiquidCrystal_I2C.h>
 
 
-const char* VERSION = "0.4";
+const char* VERSION = "0.5";
 
 
 // rgb strip configuration
+const uint8_t colorSaturation = 240;
+RgbColor red(colorSaturation, 0, 0);
+RgbColor green(0, colorSaturation, 0);
+RgbColor yellow(colorSaturation, colorSaturation, 0);
+RgbColor white(colorSaturation);
+RgbColor black(0);
+
+HslColor hslRed(red);
+HslColor hslGreen(green);
+HslColor hslYellow(yellow);
+HslColor hslWhite(white);
+HslColor hslBlack(black);
+
 const uint16_t pixelCount = 32;
-const uint8_t  pixelPin = RX; // make sure to set this to the correct pin, ignored for Esp8266
+const uint8_t  pixelPin = RX; // ignored for Esp8266 (always uses RX pin)
 
 const int button1 = D5; // next / menu / enter 14
 const int button2 = D7; // reset / menu ?      13
@@ -130,6 +143,19 @@ void lcd_print_min_sec(float minutes, unsigned line=0, int offset=0)
 }
 
 
+void set_led_timer(const RgbColor &color)
+{
+
+  for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
+    strip.SetPixelColor(pixel, black);
+  }
+  // from 0 to led_timer value
+  for (uint16_t pixel = 0; pixel < led_timer; pixel++) {
+    strip.SetPixelColor(pixel, color);
+  }
+  strip.Show();
+}
+
 
 void setup()
 {
@@ -164,10 +190,16 @@ void setup()
 
 
   // quick test
-  // for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
-  //   RgbColor color = RgbColor(random(255), random(255), random(255));
-  //   strip.SetPixelColor(pixel, color);
-  // }
+  for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
+    strip.SetPixelColor(pixel, white);
+    delay(50);
+    strip.Show();
+  }
+  for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
+    strip.SetPixelColor(pixel, black);
+    delay(50);
+    strip.Show();
+  }
 
 }
 
@@ -188,6 +220,11 @@ void loop()
   if (HIGH == b1_state) {
     Serial.println("button 1");
     b1_state = LOW;
+
+    for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
+      strip.SetPixelColor(pixel, black);
+    }
+    strip.Show();
 
     if (RUNNING == mode) {
       // meeting started, stop if button 1 pressed ?!
@@ -216,7 +253,7 @@ void loop()
 
     if (SHOW_T_PER_PERSON == mode) {
       lcd.setCursor(0, 0);
-      lcd.print("Min.per person: ");
+      lcd.print("Min. per person:");
       lcd.setCursor(0, 1);
       lcd.print("                ");
       lcd.setCursor(0, 1);
@@ -253,7 +290,7 @@ void loop()
       lcd_print_num(scrum_time, 1);
     }
     if (ENTER_PERSON == mode) { // enter persons
-      if (persons > 1) persons--;
+      if (persons > 2) persons--;
       lcd.setCursor(0, 1);
       lcd.print("   persons      ");
       lcd_print_num(persons, 1);
@@ -267,18 +304,20 @@ void loop()
     Serial.println("button 4");
     b4_state = LOW;
 
+    for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
+      strip.SetPixelColor(pixel, green);
+    }
+    strip.Show();
+
     if (mode != RUNNING) {
       mode = RUNNING;
       timer = t_per_person;
-      // t_per_person -> all leds on (green?)
-      //led_timer = timer * (pixelCount / timer);
 
       lcd.setCursor(0, 0);
       lcd.print("Start, press NXT");
       lcd.setCursor(0, 1);
       lcd.print("  :       min.  ");
       lcd_print_num(current_person, 1);
-      //lcd_print_num(timer, 1, 4);
       lcd_print_min_sec(timer, 1, 4);
     }
     else {
@@ -296,7 +335,6 @@ void loop()
       lcd.setCursor(0, 1);
       lcd.print("  :       min.  ");
       lcd_print_num(current_person, 1);
-      //lcd_print_num(timer, 1, 4);
       lcd_print_min_sec(timer, 1, 4);
     }
   }
@@ -320,7 +358,7 @@ void loop()
 
     if (RUNNING == mode) {
       lcd_print_min_sec(timer, 1, 4);
-
+      set_led_timer(green);
       Serial.println(timer);
       Serial.println(led_timer);
     }
