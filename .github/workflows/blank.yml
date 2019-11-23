@@ -1,9 +1,6 @@
+- name: Setup Arduino CLI
+  uses: arduino/setup-arduino-cli@v1.0.0
 
-name: arduino-builder
-
-on: [push]
-
-  uses: Legion2/arduino-builder-action@v2.0.0
   with:
     # Path to a single sketch
     sketch: # optional
