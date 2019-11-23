@@ -7,13 +7,21 @@ on: [push]
   with:
     # Path to a single sketch
     sketch: # optional
+
     # Directory in which to search for sketches
     sketchDirectory: # optional, default is examples
+
     # Fully Qualified Board Name
     board: # optional, default is arduino:avr:uno
-    # Directory containing Arduino libraries. Use this directory to install required 3rd-party libraries.
 
+    # Directory containing Arduino libraries. Use this directory to install required 3rd-party libraries.
     libraries: # optional, default is libraries
+    #    <NeoPixelBus.h>
+    #    <NeoPixelAnimator.h>
+    #    <ESP8266WiFi.h>
+    #    <Wire.h>
+    #    <LiquidCrystal_I2C.h>
+
     # Directory containing Arduino platforms
     hardware: # optional, default is hardware
 
