@@ -46,7 +46,7 @@ jobs:
           repository: Makuna/NeoPixelBus
           tag: '2.5.3'
           path: libraries
-          file: 2.5.3.zip
+          file: NeoPixelBus-2.5.3.zip
 
       - name: Build all example sketches
         uses: antimatter15/esp8266-arduino-builder-action@v4.0.0
