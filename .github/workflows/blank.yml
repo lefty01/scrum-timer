@@ -39,7 +39,6 @@ jobs:
         run: |
           arduino-cli core update-index
           arduino-cli core install arduino:samd
-          arduino-cli core install esp8266:esp8266
           arduino-cli core list
 
       # - name: Download CLI
