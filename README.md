@@ -1,5 +1,4 @@
-![](https://github.com/lefty01/scrum-timer/workflows/.github/workflows/blank.yml/badge.svg)
-
+[![Actions Status](https://github.com/lefty01/scrum-timer/workflows/test/badge.svg)](https://github.com/lefty01/scrum-timer/actions)
 
 # scrum-timer
 esp8266 (wemos D1 min) based scrum timer with LCD display and RGB light-strip or ring.
