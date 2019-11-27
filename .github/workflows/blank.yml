@@ -43,13 +43,13 @@ jobs:
           arduino-cli core install arduino:samd
           arduino-cli core list
 
-      # - name: Download CLI
-      #   uses: Legion2/download-release-action@v2.1.0
-      #   with:
-      #     repository: Makuna/NeoPixelBus
-      #     tag: '2.5.3'
-      #     path: libraries
-      #     file: NeoPixelBus-2.5.3.zip
+      - name: Download CLI
+        uses: Legion2/download-release-action@v2.1.0
+        with:
+          repository: Makuna/NeoPixelBus
+          tag: '2.5.3'
+          path: libraries
+          file: NeoPixelBus-2.5.3.zip
 
       - name: Build sketch for wemos d1 mini
         uses: lefty01/esp8266-arduino-builder-action@master
