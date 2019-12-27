@@ -50,7 +50,7 @@ jobs:
       - name: Build sketch for wemos d1 mini
         uses: lefty01/esp8266-arduino-builder-action@master
 #       uses: antimatter15/esp8266-arduino-builder-action@v4.0.0
-        run: arduino-cli compile --fqbn esp8266com:esp8266:esp8266_wemos_d1minipro ./scrum-timer
+        #run: arduino-cli compile --fqbn esp8266com:esp8266:esp8266_wemos_d1minipro ./scrum-timer
 
 
 #   with:
