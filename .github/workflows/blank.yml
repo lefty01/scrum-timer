@@ -24,17 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@master
  
-      - name: echo some stuff
-        run: |
-          echo Hello First Workflow FOO is $FOO.
-
       # We use the arduino/setup-arduino-cli action to install and
       # configure the Arduino CLI on the system.
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1.0.0
  
-      # We then install the platform, which one will be determined
-      # dynamically by the build matrix.
+      # install esp8266 platform
       - name: Install platform
         run: |
           arduino-cli config init
@@ -42,18 +37,21 @@ jobs:
           arduino-cli --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json core install esp8266:esp8266
           arduino-cli core install arduino:samd
           arduino-cli core list
+          arduino-cli lib install NeoPixelBus
 
-      - name: Download CLI
-        uses: Legion2/download-release-action@v2.1.0
-        with:
-          repository: Makuna/NeoPixelBus
-          tag: '2.5.3'
-          path: libraries
-          file: NeoPixelBus-2.5.3.zip
+      # - name: Download CLI
+      #   uses: Legion2/download-release-action@v2.1.0
+      #   with:
+      #     repository: Makuna/NeoPixelBus
+      #     tag: '2.5.3'
+      #     path: libraries
+      #     file: NeoPixelBus-2.5.3.zip
 
       - name: Build sketch for wemos d1 mini
         uses: lefty01/esp8266-arduino-builder-action@master
 #       uses: antimatter15/esp8266-arduino-builder-action@v4.0.0
+        run: arduino-cli compile --fqbn esp8266com:esp8266:esp8266_wemos_d1minipro ./scrum-timer
+
 
 #   with:
 #     # Path to a single sketch
