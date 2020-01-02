@@ -16,6 +16,11 @@ jobs:
     env:
       FOO: Baaaz
 
+      - name: prepare arduino cli
+        run: |
+          echo Hello First Workflow FOO is $FOO.
+          mkdir -p /home/runner/.arduino15
+          touch /home/runner/.arduino15/arduino-cli.yaml
     
     # a job contains a sequence of steps that should run ()
     # note: not all steps run actions, but all actions run as a step
@@ -32,13 +37,12 @@ jobs:
       # install esp8266 platform
       - name: Install platform
         run: |
-          touch /home/runner/.arduino15/arduino-cli.yaml
           arduino-cli config init
           arduino-cli --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json core update-index
           arduino-cli --additional-urls http://arduino.esp8266.com/stable/package_esp8266com_index.json core install esp8266:esp8266
           arduino-cli core install arduino:samd
           arduino-cli core list
-#arduino-cli lib install NeoPixelBus
+          arduino-cli lib install NeoPixelBus
 
       # - name: Download CLI
       #   uses: Legion2/download-release-action@v2.1.0

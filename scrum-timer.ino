@@ -10,21 +10,22 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// FIXME: inconsitent types eg. uint8_t vs byte
 // TODO: optional start wifi AP & webserver for (more) config options
 //       eg. light strip size or type (strip, ring, matrix)
+//       store defaults in flash and add config menu to change defaults
 
-const char* VERSION = "0.7b";
+const char* VERSION = "0.8";
 
 // rgb strip configuration
 // leds on strip/ring
-const uint16_t pixelCount = 50;
+const uint16_t pixelCount = 60;
  // ignored for Esp8266 (always uses RX pin)
 const uint8_t  pixelPin = RX;
 // aka brightness (max 255)
-const uint8_t colorSaturation = 200;
+const uint8_t colorSaturation = 250;
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
+RgbColor blue(0, 0, colorSaturation);
 RgbColor yellow(colorSaturation, colorSaturation, 0);
 RgbColor white(colorSaturation);
 RgbColor black(0);
@@ -41,10 +42,10 @@ const int button2 = D7; // up    / increment
 const int button3 = D6; // down  / decrement
 const int button4 = D4; // start / next
 // volatile used in isr
-volatile byte b1_state = LOW;
-volatile byte b2_state = LOW;
-volatile byte b3_state = LOW;
-volatile byte b4_state = LOW;
+volatile uint8_t b1_state = LOW;
+volatile uint8_t b2_state = LOW;
+volatile uint8_t b3_state = LOW;
+volatile uint8_t b4_state = LOW;
 volatile unsigned long lastButton1 = 0;
 volatile unsigned long lastButton2 = 0;
 volatile unsigned long lastButton3 = 0;
@@ -63,19 +64,19 @@ enum modes {
   RUNNING,
   TIMEOUT
 };
-byte mode = POR;
-byte timeout = 0;
-bool timeout_toggle = false;
+uint8_t mode = POR;
+uint8_t timeout = 0;
+bool timeoutToggle = false;
 
-int scrum_time = 15; // scrum meeting time in minutes, default 15min
+int scrumTime = 15; // scrum meeting time in minutes, default 15min
 int persons    = 5; // number of participants, default 5
-float first_warn = 0.1;  // warning, turn yellow if only 10% left
-float final_warn = 0.05; // final warn, if only 5% time left
+float firstWarn = 0.1;  // warning, turn yellow if only 10% left
+float finalWarn = 0.05; // final warn, if only 5% time left
 
-float t_per_person = (float)scrum_time / (float)persons;
+float t_per_person = (float)scrumTime / (float)persons;
 float timer, first_warn_t, final_warn_t;
-uint16_t led_timer;
-int current_person = 1;
+uint16_t ledTimer;
+int currentPerson = 1;
 
 #define EVERY_SECOND 1000 // every second do...
 unsigned long time_1 = 0;
@@ -154,35 +155,34 @@ void lcd_print_min_sec(float minutes, unsigned line=0, int offset=0)
   lcd.print(sec);
 }
 
-// fixme/todo: first & final warning, change color
-void set_led_timer(const RgbColor &color)
+void set_led_timer(const RgbColor &color, uint16_t setNumLeds)
 {
 
   for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
-    strip.SetPixelColor(pixel, black);
+    strip.SetPixelColor(pixel, color);
   }
   delay(10);
   // from 0 to led_timer value
-  for (uint16_t pixel = 0; pixel < led_timer; pixel++) {
-    strip.SetPixelColor(pixel, color);
+  for (uint16_t pixel = 0; pixel < (pixelCount - setNumLeds); pixel++) {
+    strip.SetPixelColor(pixel, black);
   }
   strip.Show();
 }
 
 void set_led_timeout(const RgbColor &color)
 {
-  if (timeout_toggle) {
+  if (timeoutToggle) {
     for (uint16_t pixel = 0; pixel < pixelCount; pixel += 2) {
       strip.SetPixelColor(pixel, color);
     }
   }
   else {
-    for (uint16_t pixel = 0; pixel < pixelCount; pixel += 2) {
+    for (uint16_t pixel = 0; pixel < pixelCount; ++pixel) {
       strip.SetPixelColor(pixel, black);
     }
   }
   strip.Show();
-  timeout_toggle = !timeout_toggle;
+  timeoutToggle = !timeoutToggle;
 }
 
 void clear_leds()
@@ -228,7 +228,7 @@ void setup()
 
   // quick test
   for (uint16_t pixel = 0; pixel <= pixelCount; pixel++) {
-    strip.SetPixelColor(pixel, yellow);
+    strip.SetPixelColor(pixel, blue);
     if (pixel > 0)
       strip.SetPixelColor(pixel - 1, black);
     strip.Show();
@@ -240,7 +240,7 @@ void setup()
 void loop()
 {
   if (POR == mode) {
-    timeout_toggle = false;
+    timeoutToggle = false;
     clear_leds();
     lcd.setCursor(0, 0);
     lcd.print(" *SCRUM  TIMER* ");
@@ -255,15 +255,12 @@ void loop()
     Serial.println("button 1");
     b1_state = LOW;
 
-    for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
-      strip.SetPixelColor(pixel, black);
-    }
-    strip.Show();
+    clear_leds();
 
     if (RUNNING == mode) {
       // meeting started, stop if button 1 pressed
       Serial.println("coming from mode=4 reset mode to 0!");
-      current_person = 1;
+      currentPerson = 1;
       mode = POR;
       return;
     }
@@ -282,7 +279,7 @@ void loop()
       lcd.print("Enter Time:     ");
       lcd.setCursor(0, 1);
       lcd.print("   minutes      ");
-      lcd_print_num(scrum_time, 1);
+      lcd_print_num(scrumTime, 1);
     }
 
     if (SHOW_T_PER_PERSON == mode) {
@@ -298,10 +295,10 @@ void loop()
   if (HIGH == b2_state) { // up/increase
     Serial.println("button 2");
     if (ENTER_TIME == mode) { // enter time
-      if (scrum_time < 99) scrum_time++;
+      if (scrumTime < 99) scrumTime++;
       lcd.setCursor(0, 1);
       lcd.print("   minutes      ");
-      lcd_print_num(scrum_time, 1);
+      lcd_print_num(scrumTime, 1);
     }
     if (ENTER_PERSON == mode) { // enter persons
       if (persons < 99) persons++;
@@ -309,19 +306,19 @@ void loop()
       lcd.print("   persons      ");
       lcd_print_num(persons, 1);
     }
-    t_per_person = (float)scrum_time / (float)persons;
-    first_warn_t = first_warn * t_per_person;
-    final_warn_t = final_warn * t_per_person;
+    t_per_person = (float)scrumTime / (float)persons;
+    first_warn_t = firstWarn * t_per_person;
+    final_warn_t = finalWarn * t_per_person;
     b2_state = LOW;
   }
 
   if (HIGH == b3_state) { // down/decrease
     Serial.println("button 3");
     if (ENTER_TIME == mode) { // enter time
-      if (scrum_time > 1) scrum_time--;
+      if (scrumTime > 1) scrumTime--;
       lcd.setCursor(0, 1);
       lcd.print("   minutes      ");
-      lcd_print_num(scrum_time, 1);
+      lcd_print_num(scrumTime, 1);
     }
     if (ENTER_PERSON == mode) { // enter persons
       if (persons > 2) persons--;
@@ -329,9 +326,9 @@ void loop()
       lcd.print("   persons      ");
       lcd_print_num(persons, 1);
     }
-    t_per_person = (float)scrum_time / (float)persons;
-    first_warn_t = first_warn * t_per_person;
-    final_warn_t = final_warn * t_per_person;
+    t_per_person = (float)scrumTime / (float)persons;
+    first_warn_t = firstWarn * t_per_person;
+    final_warn_t = finalWarn * t_per_person;
     b3_state = LOW;
   }
 
@@ -340,7 +337,7 @@ void loop()
     Serial.println("button 4");
     b4_state = LOW;
     timeout = 0;
-    timeout_toggle = false;
+    timeoutToggle = false;
 
     for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
       strip.SetPixelColor(pixel, green);
@@ -355,14 +352,14 @@ void loop()
       lcd.print("Start, press NXT");
       lcd.setCursor(0, 1);
       lcd.print("  :       min.  ");
-      lcd_print_num(current_person, 1);
+      lcd_print_num(currentPerson, 1);
       lcd_print_min_sec(timer, 1, 4);
     }
     else {
       timer = t_per_person;
-      current_person++;
-      if (current_person > persons) {
-	current_person = 1;
+      currentPerson++;
+      if (currentPerson > persons) {
+	currentPerson = 1;
 	mode = POR;
 	return;
       }
@@ -371,7 +368,7 @@ void loop()
       lcd.print("  NEXT !!!      ");
       lcd.setCursor(0, 1);
       lcd.print("  :       min.  ");
-      lcd_print_num(current_person, 1);
+      lcd_print_num(currentPerson, 1);
       lcd_print_min_sec(timer, 1, 4);
     }
   }
@@ -382,7 +379,7 @@ void loop()
     time_1 = millis();
     // timer is in decimal minutes, decrement every second
     timer -= 0.0167; // 1/60
-    led_timer = timer * (pixelCount / t_per_person);
+    ledTimer = timer * (pixelCount / t_per_person);
 
     if (timer <= 0.0) {
       timer = 0.0;
@@ -396,9 +393,16 @@ void loop()
     }
     else if (RUNNING == mode) {
       lcd_print_min_sec(timer, 1, 4);
-      set_led_timer(green);
+
+      if (timer <= first_warn_t)
+	set_led_timer(red,    ledTimer);
+      // else if (timer <= first_warn_t)
+      //	set_led_timer(yellow,  ledTimer);
+      else
+	set_led_timer(green, ledTimer);
+
       Serial.println(timer);
-      Serial.println(led_timer);
+      Serial.println(ledTimer);
     }
   }
 
