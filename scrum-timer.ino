@@ -13,8 +13,9 @@
 // TODO: optional start wifi AP & webserver for (more) config options
 //       eg. light strip size or type (strip, ring, matrix)
 //       store defaults in flash and add config menu to change defaults
+//       possible other "apps": (tea-)timer, clock, ...
 
-const char* VERSION = "0.8";
+const char* VERSION = "0.9";
 
 // rgb strip configuration
 // leds on strip/ring
@@ -22,7 +23,7 @@ const uint16_t pixelCount = 60;
  // ignored for Esp8266 (always uses RX pin)
 const uint8_t  pixelPin = RX;
 // aka brightness (max 255)
-const uint8_t colorSaturation = 250;
+uint8_t colorSaturation = 200; // todo: config option for brightness
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
 RgbColor blue(0, 0, colorSaturation);
@@ -68,8 +69,8 @@ uint8_t mode = POR;
 uint8_t timeout = 0;
 bool timeoutToggle = false;
 
-int scrumTime = 15; // scrum meeting time in minutes, default 15min
-int persons    = 5; // number of participants, default 5
+int scrumTime   = 15;   // scrum meeting time in minutes, default 15min
+int persons     = 5;    // number of participants, default 5
 float firstWarn = 0.1;  // warning, turn yellow if only 10% left
 float finalWarn = 0.05; // final warn, if only 5% time left
 
@@ -88,7 +89,7 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(pixelCount, pixelPin);
 NeoPixelAnimator animations(1, NEO_MILLISECONDS); // one animation for timeout
 
 
-
+// put isr's into ram, esp might crash otherwise (due to mutlithrading)
 ICACHE_RAM_ATTR void button1_cb()
 {
   if ((millis() - lastButton1) > debounceT) {
@@ -157,7 +158,6 @@ void lcd_print_min_sec(float minutes, unsigned line=0, int offset=0)
 
 void set_led_timer(const RgbColor &color, uint16_t setNumLeds)
 {
-
   for (uint16_t pixel = 0; pixel < pixelCount; pixel++) {
     strip.SetPixelColor(pixel, color);
   }
