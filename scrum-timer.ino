@@ -1,21 +1,27 @@
 
 /*
- * Copyright (c) 2019 Andreas Loeffler <al@exitzero.de>
+ * Copyright (c) 2019,2020 Andreas Loeffler <al@exitzero.de>
  */
 
 #include <NeoPixelBus.h>
 #include <NeoPixelAnimator.h>
-
-//#include <ESP8266WiFi.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// TODO: optional start wifi AP & webserver for (more) config options
+// TODO: optional start wifi AP & webserver for (more) config options & OTA
 //       eg. light strip size or type (strip, ring, matrix)
 //       store defaults in flash and add config menu to change defaults
 //       possible other "apps": (tea-)timer, clock, ...
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+//#include <ESP8266WebServer.h>
 
-const char* VERSION = "0.9";
+const char* ssid = "SCRUMTIMER";
+const char* password = "m1u2r3c4s5";
+
+const char* VERSION = "1.1";
 
 // rgb strip configuration
 // leds on strip/ring
@@ -23,7 +29,7 @@ const uint16_t pixelCount = 60;
  // ignored for Esp8266 (always uses RX pin)
 const uint8_t  pixelPin = RX;
 // aka brightness (max 255)
-uint8_t colorSaturation = 200; // todo: config option for brightness
+uint8_t colorSaturation = 96; // todo: config option for brightness
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
 RgbColor blue(0, 0, colorSaturation);
@@ -196,6 +202,65 @@ void clear_leds()
 
 void setup()
 {
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("SCRUM TIMER");
+  Serial.print("Version: ");
+  Serial.println(VERSION);
+    
+  boolean rc = WiFi.softAP(ssid, password);
+  if (true == rc)
+    Serial.println("AP Ready");
+  else
+    Serial.println("Soft AP setup Failed!");
+
+  // this resets all the neopixels to an off state
+  strip.Begin();
+  strip.Show();
+  // quick test
+  for (uint16_t pixel = 0; pixel <= pixelCount; pixel++) {
+    strip.SetPixelColor(pixel, blue);
+    if (pixel > 0)
+      strip.SetPixelColor(pixel - 1, black);
+    strip.Show();
+    delay(20);
+  }
+
+
+
+  ArduinoOTA.setHostname("scrumtimer1");
+  ArduinoOTA.onStart([]() {
+		       String type;
+		       if (ArduinoOTA.getCommand() == U_FLASH) {
+			 type = "sketch";
+		       } else { // U_FS
+			 type = "filesystem";
+		       }
+
+		       // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+		       Serial.println("Start updating " + type);
+		     });
+  ArduinoOTA.onEnd([]() {
+		     Serial.println("\nEnd");
+		   });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+			  Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+			});
+  ArduinoOTA.onError([](ota_error_t error) {
+		       Serial.printf("Error[%u]: ", error);
+		       if (error == OTA_AUTH_ERROR) {
+			 Serial.println("Auth Failed");
+		       } else if (error == OTA_BEGIN_ERROR) {
+			 Serial.println("Begin Failed");
+		       } else if (error == OTA_CONNECT_ERROR) {
+			 Serial.println("Connect Failed");
+		       } else if (error == OTA_RECEIVE_ERROR) {
+			 Serial.println("Receive Failed");
+		       } else if (error == OTA_END_ERROR) {
+			 Serial.println("End Failed");
+		       }
+		     });
+  ArduinoOTA.begin();
 
   // pin config
   pinMode(LED_BUILTIN, OUTPUT);
@@ -211,8 +276,6 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(button3), button3_cb, FALLING);
   attachInterrupt(digitalPinToInterrupt(button4), button4_cb, FALLING);
 
-  Serial.begin(115200);
-  Serial.println("SCRUM TIMER");
 
   lcd.init();
   // Print a message to the LCD.
@@ -221,19 +284,7 @@ void setup()
   // led off
   digitalWrite(LED_BUILTIN, HIGH);
 
-  // this resets all the neopixels to an off state
-  strip.Begin();
-  strip.Show();
 
-
-  // quick test
-  for (uint16_t pixel = 0; pixel <= pixelCount; pixel++) {
-    strip.SetPixelColor(pixel, blue);
-    if (pixel > 0)
-      strip.SetPixelColor(pixel - 1, black);
-    strip.Show();
-    delay(20);
-  }
 }
 
 
@@ -395,7 +446,7 @@ void loop()
       lcd_print_min_sec(timer, 1, 4);
 
       if (timer <= first_warn_t)
-	set_led_timer(red,    ledTimer);
+	set_led_timer(red, ledTimer);
       // else if (timer <= first_warn_t)
       //	set_led_timer(yellow,  ledTimer);
       else
@@ -406,4 +457,5 @@ void loop()
     }
   }
 
+  ArduinoOTA.handle();
 }
