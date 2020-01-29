@@ -258,7 +258,7 @@ void setup()
 			  lcd.print("       /       B");
 			  lcd.setCursor(0, 1);
 			  lcd.print(progress);
-			  lcd.setCursor(10, 1);
+			  lcd.setCursor(8, 1);
 			  lcd.print(total);
 
 			});
