@@ -13,3 +13,9 @@ esp8266 (wemos D1 min) based scrum timer with LCD display and RGB light-strip or
 
 
 ### Buttons: Menu/Rest, Down/decrease, Up/increase, Start/Next
+
+## OTA
+esp is now started in wifi "AP" mode, so you cann connect to it and then perform over-the-air updates.
+
+This was tested in a wemos D1 mini (esp8266) with arduino IDE 1.8.10 and esp8266 sdk version 2.6.3.
+As board in this case select: LOLIN(WEMOS) D1 R2 & mini, for 'Flash Size' select: '4MB (FS: 1MB OTA:~1019KB)'

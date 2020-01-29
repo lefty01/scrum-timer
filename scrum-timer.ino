@@ -8,20 +8,17 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// TODO: optional start wifi AP & webserver for (more) config options & OTA
-//       eg. light strip size or type (strip, ring, matrix)
+// TODO: config option via wifi/webserver (AP running now)
+//       eg. to set light strip size or type (strip, ring, matrix)
 //       store defaults in flash and add config menu to change defaults
 //       possible other "apps": (tea-)timer, clock, ...
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 //#include <ESP8266WebServer.h>
 
 const char* ssid = "SCRUMTIMER";
 const char* password = "m1u2r3c4s5";
 
-const char* VERSION = "1.1";
+const char* VERSION = "1.4";
 
 // rgb strip configuration
 // leds on strip/ring
@@ -29,7 +26,7 @@ const uint16_t pixelCount = 60;
  // ignored for Esp8266 (always uses RX pin)
 const uint8_t  pixelPin = RX;
 // aka brightness (max 255)
-uint8_t colorSaturation = 96; // todo: config option for brightness
+uint8_t colorSaturation = 64; // todo: config option for brightness
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
 RgbColor blue(0, 0, colorSaturation);
@@ -226,6 +223,9 @@ void setup()
     delay(20);
   }
 
+  lcd.init();
+  // Print a message to the LCD.
+  lcd.backlight();
 
 
   ArduinoOTA.setHostname("scrumtimer1");
@@ -239,12 +239,28 @@ void setup()
 
 		       // NOTE: if updating FS this would be the place to unmount FS using FS.end()
 		       Serial.println("Start updating " + type);
+		       clear_leds();
 		     });
   ArduinoOTA.onEnd([]() {
 		     Serial.println("\nEnd");
 		   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-			  Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+			  unsigned int percent = progress / (total / 100);
+			  unsigned int pixel = ((unsigned int)(percent * 0.6)) - 1;
+			  Serial.printf("Progress: %u%%\r", percent);
+			  // upload progress on ring
+			  strip.SetPixelColor(pixel, blue);
+			  strip.Show();
+
+			  lcd.setCursor(0, 0);
+			  lcd.print(" * OTA UPDATE * ");
+			  lcd.setCursor(0, 1);
+			  lcd.print("       /       B");
+			  lcd.setCursor(0, 1);
+			  lcd.print(progress);
+			  lcd.setCursor(10, 1);
+			  lcd.print(total);
+
 			});
   ArduinoOTA.onError([](ota_error_t error) {
 		       Serial.printf("Error[%u]: ", error);
@@ -277,13 +293,9 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(button4), button4_cb, FALLING);
 
 
-  lcd.init();
-  // Print a message to the LCD.
-  lcd.backlight();
-
-  // led off
+  // blue on-board led off
   digitalWrite(LED_BUILTIN, HIGH);
-
+  clear_leds();
 
 }
 
