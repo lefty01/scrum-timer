@@ -18,7 +18,7 @@
 const char* ssid = "SCRUMTIMER";
 const char* password = "m1u2r3c4s5";
 
-const char* VERSION = "1.4";
+const char* VERSION = "1.6";
 
 // rgb strip configuration
 // leds on strip/ring
@@ -46,17 +46,18 @@ const int button2 = D7; // up    / increment
 const int button3 = D6; // down  / decrement
 const int button4 = D4; // start / next
 // volatile used in isr
-volatile uint8_t b1_state = LOW;
-volatile uint8_t b2_state = LOW;
-volatile uint8_t b3_state = LOW;
-volatile uint8_t b4_state = LOW;
+volatile uint8_t b1State = LOW;
+volatile uint8_t b2State = LOW;
+volatile uint8_t b3State = LOW;
+volatile uint8_t b4State = LOW;
 volatile unsigned long lastButton1 = 0;
 volatile unsigned long lastButton2 = 0;
 volatile unsigned long lastButton3 = 0;
 volatile unsigned long lastButton4 = 0;
+bool OTA_ENABLED = false;
 
 // button debounce time in ms
-unsigned long debounceT = 300;
+unsigned long debounceT = 350;
 
 // mode or state where the timer is currently running in
 enum modes {
@@ -96,28 +97,28 @@ NeoPixelAnimator animations(1, NEO_MILLISECONDS); // one animation for timeout
 ICACHE_RAM_ATTR void button1_cb()
 {
   if ((millis() - lastButton1) > debounceT) {
-    b1_state = HIGH;
+    b1State = HIGH;
     lastButton1 = millis();
   }
 }
 ICACHE_RAM_ATTR void button2_cb()
 {
   if ((millis() - lastButton2) > debounceT) {
-    b2_state = HIGH;
+    b2State = HIGH;
     lastButton2 = millis();
   }
 }
 ICACHE_RAM_ATTR void button3_cb()
 {
   if ((millis() - lastButton3) > debounceT) {
-    b3_state = HIGH;
+    b3State = HIGH;
     lastButton3 = millis();
   }
 }
 ICACHE_RAM_ATTR void button4_cb()
 {
   if ((millis() - lastButton4) > debounceT) {
-    b4_state = HIGH;
+    b4State = HIGH;
     lastButton4 = millis();
   }
 }
@@ -204,12 +205,18 @@ void setup()
   Serial.println("SCRUM TIMER");
   Serial.print("Version: ");
   Serial.println(VERSION);
-    
-  boolean rc = WiFi.softAP(ssid, password);
-  if (true == rc)
-    Serial.println("AP Ready");
-  else
-    Serial.println("Soft AP setup Failed!");
+
+  // pin config
+  pinMode(LED_BUILTIN, OUTPUT);
+  // inputs button 1-4
+  pinMode(button1, INPUT_PULLUP);
+  pinMode(button2, INPUT_PULLUP);
+  pinMode(button3, INPUT_PULLUP);
+  pinMode(button4, INPUT_PULLUP);
+
+  // enable lcd display
+  lcd.init();
+  lcd.backlight();
 
   // this resets all the neopixels to an off state
   strip.Begin();
@@ -223,80 +230,89 @@ void setup()
     delay(20);
   }
 
-  lcd.init();
-  // Print a message to the LCD.
-  lcd.backlight();
 
+  // enable AP/OTA mode only if powered up while a key pressed
+  WiFi.softAPdisconnect(true); // deconfigure and disable
+  WiFi.enableAP(false); // disable per default
 
-  ArduinoOTA.setHostname("scrumtimer1");
-  ArduinoOTA.onStart([]() {
-		       String type;
-		       if (ArduinoOTA.getCommand() == U_FLASH) {
-			 type = "sketch";
-		       } else { // U_FS
-			 type = "filesystem";
-		       }
+  delay(500);
+  if (LOW == digitalRead(button4)) {
+    lcd.setCursor(0, 0);
+    lcd.print(" enable AP/OTA  ");
 
-		       // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-		       Serial.println("Start updating " + type);
-		       clear_leds();
+    WiFi.enableAP(true);
+    if (WiFi.softAP(ssid, password)) {
+      Serial.println("AP Ready");
+      lcd.setCursor(0, 1);
+      lcd.print(" AP/OTA ready   ");
+      OTA_ENABLED = true;
+    }
+    else {
+      Serial.println("Soft AP setup Failed!");
+      lcd.setCursor(0, 1);
+      lcd.print(" AP seup failed ");
+    }
+
+    ArduinoOTA.setHostname("scrumtimer1");
+    ArduinoOTA.onStart([]() {
+			 String type;
+			 if (ArduinoOTA.getCommand() == U_FLASH) {
+			   type = "sketch";
+			 } else { // U_FS
+			   type = "filesystem";
+			 }
+
+			 // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+			 Serial.println("Start updating " + type);
+			 clear_leds();
+		       });
+    ArduinoOTA.onEnd([]() {
+		       Serial.println("\nEnd");
 		     });
-  ArduinoOTA.onEnd([]() {
-		     Serial.println("\nEnd");
-		   });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-			  unsigned int percent = progress / (total / 100);
-			  unsigned int pixel = ((unsigned int)(percent * 0.6)) - 1;
-			  Serial.printf("Progress: %u%%\r", percent);
-			  // upload progress on ring
-			  strip.SetPixelColor(pixel, blue);
-			  strip.Show();
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+			    unsigned int percent = progress / (total / 100);
+			    unsigned int pixel = ((unsigned int)(percent * 0.6)) - 1;
+			    Serial.printf("Progress: %u%%\r", percent);
+			    // upload progress on ring
+			    strip.SetPixelColor(pixel, blue);
+			    strip.Show();
 
-			  lcd.setCursor(0, 0);
-			  lcd.print(" * OTA UPDATE * ");
-			  lcd.setCursor(0, 1);
-			  lcd.print("       /       B");
-			  lcd.setCursor(0, 1);
-			  lcd.print(progress);
-			  lcd.setCursor(8, 1);
-			  lcd.print(total);
-
-			});
-  ArduinoOTA.onError([](ota_error_t error) {
-		       Serial.printf("Error[%u]: ", error);
-		       if (error == OTA_AUTH_ERROR) {
-			 Serial.println("Auth Failed");
-		       } else if (error == OTA_BEGIN_ERROR) {
-			 Serial.println("Begin Failed");
-		       } else if (error == OTA_CONNECT_ERROR) {
-			 Serial.println("Connect Failed");
-		       } else if (error == OTA_RECEIVE_ERROR) {
-			 Serial.println("Receive Failed");
-		       } else if (error == OTA_END_ERROR) {
-			 Serial.println("End Failed");
-		       }
-		     });
-  ArduinoOTA.begin();
-
-  // pin config
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  // inputs button 1-4
-  pinMode(button1, INPUT_PULLUP);
-  pinMode(button2, INPUT_PULLUP);
-  pinMode(button3, INPUT_PULLUP);
-  pinMode(button4, INPUT_PULLUP);
+			    lcd.setCursor(0, 0);
+			    lcd.print(" * OTA UPDATE * ");
+			    lcd.setCursor(0, 1);
+			    lcd.print("       /       B");
+			    lcd.setCursor(0, 1);
+			    lcd.print(progress);
+			    lcd.setCursor(8, 1);
+			    lcd.print(total);
+			  });
+    ArduinoOTA.onError([](ota_error_t error) {
+			 Serial.printf("Error[%u]: ", error);
+			 if (error == OTA_AUTH_ERROR) {
+			   Serial.println("Auth Failed");
+			 } else if (error == OTA_BEGIN_ERROR) {
+			   Serial.println("Begin Failed");
+			 } else if (error == OTA_CONNECT_ERROR) {
+			   Serial.println("Connect Failed");
+			 } else if (error == OTA_RECEIVE_ERROR) {
+			   Serial.println("Receive Failed");
+			 } else if (error == OTA_END_ERROR) {
+			   Serial.println("End Failed");
+			 }
+		       });
+    ArduinoOTA.begin();
+  }
 
   attachInterrupt(digitalPinToInterrupt(button1), button1_cb, FALLING);
   attachInterrupt(digitalPinToInterrupt(button2), button2_cb, FALLING);
   attachInterrupt(digitalPinToInterrupt(button3), button3_cb, FALLING);
   attachInterrupt(digitalPinToInterrupt(button4), button4_cb, FALLING);
 
-
   // blue on-board led off
   digitalWrite(LED_BUILTIN, HIGH);
   clear_leds();
 
+  delay(500); // time to check lcd message
 }
 
 
@@ -314,9 +330,9 @@ void loop()
   }
 
   // menu ... button 1, cycle through config mode(s) 1..3
-  if (HIGH == b1_state) {
+  if (HIGH == b1State) {
     Serial.println("button 1");
-    b1_state = LOW;
+    b1State = LOW;
 
     clear_leds();
 
@@ -355,7 +371,7 @@ void loop()
     }
   }
 
-  if (HIGH == b2_state) { // up/increase
+  if (HIGH == b2State) { // up/increase
     Serial.println("button 2");
     if (ENTER_TIME == mode) { // enter time
       if (scrumTime < 99) scrumTime++;
@@ -372,10 +388,10 @@ void loop()
     t_per_person = (float)scrumTime / (float)persons;
     first_warn_t = firstWarn * t_per_person;
     final_warn_t = finalWarn * t_per_person;
-    b2_state = LOW;
+    b2State = LOW;
   }
 
-  if (HIGH == b3_state) { // down/decrease
+  if (HIGH == b3State) { // down/decrease
     Serial.println("button 3");
     if (ENTER_TIME == mode) { // enter time
       if (scrumTime > 1) scrumTime--;
@@ -392,13 +408,13 @@ void loop()
     t_per_person = (float)scrumTime / (float)persons;
     first_warn_t = firstWarn * t_per_person;
     final_warn_t = finalWarn * t_per_person;
-    b3_state = LOW;
+    b3State = LOW;
   }
 
 
-  if (HIGH == b4_state) { // start scrum / next person
+  if (HIGH == b4State) { // start scrum / next person
     Serial.println("button 4");
-    b4_state = LOW;
+    b4State = LOW;
     timeout = 0;
     timeoutToggle = false;
 
@@ -469,5 +485,6 @@ void loop()
     }
   }
 
-  ArduinoOTA.handle();
+  if (true == OTA_ENABLED)
+    ArduinoOTA.handle();
 }
