@@ -59,7 +59,7 @@ jobs:
         with:
           fqdn: ${{ matrix.fqbn }}
           sketch-paths: |
-            ./scrum-timer
+            ./
 
 
 
