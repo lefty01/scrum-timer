@@ -43,19 +43,24 @@ jobs:
 
       # We use the 'arduino/setup-arduino-cli' action to install and
       # configure the Arduino CLI on the system.
-      - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1.2.6
+      #- name: Setup Arduino CLI
+      #  uses: arduino/setup-arduino-cli
 
       # We then install the platform, which one will be determined
       # dynamically by the build matrix.
-      - name: Install platform
-        run: |
-          arduino-cli core update-index
-          arduino-cli core install ${{ matrix.arduino-platform }}
+      #- name: Install platform
+      #  run: |
+      #    arduino-cli core update-index
+      #    arduino-cli core install ${{ matrix.arduino-platform }}
       # Finally, we compile the sketch, using the FQBN that was set
       # in the build matrix.
       - name: Compile Sketch
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} ./scrum-timer
+        run: arduino/compile-sketches@v1
+        with:
+          fqdn: ${{ matrix.fqbn }}
+          sketch-paths: |
+            ./scrum-timer
+
 
 
 # name: Setup Arduino CLI
