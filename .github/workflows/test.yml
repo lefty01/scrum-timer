@@ -28,8 +28,6 @@ jobs:
         include:
           # This works like this: when the platformn is "arduino:samd", the
           # variable 'fqbn' is set to "arduino:samd:nano_33_iot".
-          - arduino-platform: "arduino:samd"
-            fqbn: "arduino:samd:nano_33_iot"
           - arduino-platform: "arduino:avr"
             fqbn: "arduino:avr:unowifi"
 
@@ -46,7 +44,7 @@ jobs:
       # We use the 'arduino/setup-arduino-cli' action to install and
       # configure the Arduino CLI on the system.
       - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1.0.0
+        uses: arduino/setup-arduino-cli@v1.2.6
 
       # We then install the platform, which one will be determined
       # dynamically by the build matrix.
