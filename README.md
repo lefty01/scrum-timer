@@ -30,3 +30,7 @@ $ iwlist wlan0 scan|grep SSID
 ### iptables
 iptables -I INPUT  -s 192.168.4.1 -j ACCEPT
 iptables -I OUTPUT -d 192.168.4.1 -j ACCEPT
+
+or
+
+firewall-cmd --zone=trusted --add-source=192.168.4.1
