@@ -57,7 +57,7 @@ jobs:
       - name: Compile Sketch
         uses: arduino/compile-sketches@v1
         with:
-          fqdn: ${{ matrix.fqbn }}
+          fqbn: ${{ matrix.fqbn }}
           sketch-paths: |
             ./
 
